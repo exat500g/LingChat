@@ -77,7 +77,7 @@ class MessageGenerator:
         current_context = self.memory.copy() if not memory else memory.copy()
 
         if not memory:
-            processed_user_message = self.message_processor.append_user_message(user_message)
+            processed_user_message = await self.message_processor.append_user_message(user_message)
             self.memory.append({"role": "user", "content": processed_user_message})
             current_context = self.memory.copy()
             if self.use_rag and self.rag_manager:

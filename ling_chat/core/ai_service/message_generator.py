@@ -123,7 +123,7 @@ class MessageGenerator:
 
         processed_user_message = ""
         if not memory:
-            processed_user_message = self.message_processor.append_user_message(user_message)
+            processed_user_message = await self.message_processor.append_user_message(user_message)
             self.memory.append({"role": "user", "content": processed_user_message})
         else:
             self.memory_init(memory)

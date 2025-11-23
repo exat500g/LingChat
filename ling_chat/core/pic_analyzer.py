@@ -7,8 +7,10 @@ from PIL import ImageGrab
 from ling_chat.core.logger import logger
 import requests
 import json
+import asyncio
 
 # TODO: 这个玩意是他妈的同步的，导致这个东西执行的时候，整个程序都会卡死，务必改成异步函数
+# DONE: 改成异步的了，还顺便修了VD_MODEL和VD_BASE_URL没有传入的问题
 
 class DesktopAnalyzer:
     def __init__(self, model="Pro/Qwen/Qwen2.5-VL-7B-Instruct"):
@@ -18,7 +20,7 @@ class DesktopAnalyzer:
         Args:
             model (str): 使用的AI模型，默认为'Pro/Qwen/Qwen2.5-VL-7B-Instruct'
         """
-        self.model = model
+        self.model = os.environ.get("VD_MODEL") or "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
         self.api_key = os.environ.get("VD_API_KEY") or ""
 
         if(self.api_key == "sk-114514" or self.api_key == ""):
@@ -26,7 +28,7 @@ class DesktopAnalyzer:
         else:
             logger.info("【视觉识别】你填写了VD_API_KEY，现在你可以输入“看看我的桌面”加任意提示词实现让灵灵看桌面的功能哦~")
 
-        self.base_url = "https://api.siliconflow.cn/v1/chat/completions"
+        self.base_url = os.environ.get("VD_BASE_URL") or "https://api.siliconflow.cn/v1/chat/completions"
         self.last_response_time = None
         self.last_input_tokens = None
         self.last_output_tokens = None
@@ -60,7 +62,7 @@ class DesktopAnalyzer:
         output_cost = (output_tokens / 1000) * 0.00035
         return round(input_cost + output_cost, 4)
     
-    def analyze_desktop(self, prompt="这是用户的桌面内容，请你用100字左右描绘主要内容，边角内容如任务栏不需要分析"):
+    async def analyze_desktop(self, prompt="这是用户的桌面内容，请你用100字左右描绘主要内容，边角内容如任务栏不需要分析"):
         """
         执行桌面分析
         
@@ -94,9 +96,9 @@ class DesktopAnalyzer:
             "max_tokens": 1024
         }
 
-        # 记录开始时间并发送请求
+        # 记录开始时间并发送请求（异步）
         start_time = time.time()
-        response = requests.post(self.base_url, headers=headers, json=payload)
+        response = await asyncio.to_thread(requests.post, self.base_url, headers=headers, json=payload)
         response_data = response.json()
         
         if "choices" not in response_data:
@@ -130,18 +132,18 @@ class DesktopAnalyzer:
         }
 
 
-if __name__ == "__main__":
-    # 单元测试
+async def _main():
+    # 单元测试（异步）
     analyzer = DesktopAnalyzer()
-    
+
     print("桌面内容分析器已启动...")
     input("按Enter键截取当前桌面并发送给AI分析...")
-    
+
     # 执行分析
     try:
-        description = analyzer.analyze_desktop()
+        description = await analyzer.analyze_desktop()
         report = analyzer.get_analysis_report()
-        
+
         # 显示结果
         print("\n" + "=" * 50)
         print("AI生成的桌面描述:")
@@ -157,3 +159,6 @@ if __name__ == "__main__":
         print("=" * 50)
     except Exception as e:
         print(f"发生错误: {str(e)}")
+
+if __name__ == "__main__":
+    asyncio.run(_main())
